@@ -71,7 +71,9 @@ $('#mi-import-passwords').onclick = async () => {
   menu.classList.remove('open');
   const r = await breeze.chrome.importPasswords();
   state = await breeze.state.get();
-  toast(`导入 ${r.count} 条密码`);
+  toast(r.encrypted
+    ? `导入 ${r.count} 条密码（已加密存储）`
+    : `导入 ${r.count} 条密码（⚠ 本系统不支持加密，明文存储）`);
 };
 
 $('#mi-passwords').onclick = () => { menu.classList.remove('open'); showPasswords(); };
@@ -134,7 +136,10 @@ function showPasswords() {
      </div>`).join('')
     || `<div style="color:var(--muted)">还没有密码 — 从 Chrome 导出 CSV 后点菜单「导入 Chrome 密码 (CSV)」。<br><br>
          Chrome → 设置 → 密码管理器 → 已保存的密码 → 三点菜单 → 导出密码</div>`;
-  ov.innerHTML = `<h2 style="margin-bottom:12px">密码 <button id="pw-close" style="float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button></h2>${rows}`;
+  const encNote = state.encryptionAvailable === false
+    ? '<div style="color:#e8b339;margin-bottom:12px">⚠ 当前系统不支持安全加密，密码以明文存储于 breeze-state.json</div>'
+    : '<div style="color:var(--muted);margin-bottom:12px">🔒 密码已用系统级加密存储（Windows DPAPI / macOS Keychain / Linux libsecret）</div>';
+  ov.innerHTML = `<h2 style="margin-bottom:12px">密码 <button id="pw-close" style="float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button></h2>${encNote}${rows}`;
   document.body.appendChild(ov);
   ov.querySelector('#pw-close').onclick = () => ov.remove();
   ov.querySelectorAll('button[data-i]').forEach(b => b.onclick = () => {

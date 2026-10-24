@@ -1,6 +1,6 @@
 // Breeze Browser — Electron 主进程
 // 桌面端（Windows / macOS）：多标签 WebContentsView + 极简 UI + Chrome 数据导入。
-const { app, BrowserWindow, WebContentsView, ipcMain, session, Menu } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, session, Menu, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -12,11 +12,39 @@ function loadState() {
   try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
   catch { return { wallpaper: 'aurora', customWallpaper: null, bookmarks: [], home: 'breeze://newtab' }; }
 }
+/**
+ * 保存状态。密码字段若系统支持加密（safeStorage），则以加密形式落盘；
+ * 否则保持明文并在返回值里标记 encrypted=false（调用方会提示用户）。
+ * safeStorage: Windows 用 DPAPI，macOS 用 Keychain，Linux 用 libsecret。
+ */
 function saveState(patch) {
   const s = Object.assign(loadState(), patch);
+  if (Array.isArray(s.passwords) && s.passwords.length && safeStorage.isEncryptionAvailable()) {
+    s.passwords = s.passwords.map((p) => {
+      if (p && typeof p.password === 'string' && !p.encrypted) {
+        return { ...p, password: safeStorage.encryptString(p.password).toString('base64'), encrypted: true };
+      }
+      return p;
+    });
+  }
   fs.mkdirSync(userData, { recursive: true });
   fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
   return s;
+}
+
+/** 读取时把加密的密码解密回明文（仅内存中使用，不落盘）。 */
+function decryptPasswords(s) {
+  if (!Array.isArray(s.passwords)) return [];
+  return s.passwords.map((p) => {
+    if (p && p.encrypted && safeStorage.isEncryptionAvailable()) {
+      try {
+        return { ...p, password: safeStorage.decryptString(Buffer.from(p.password, 'base64')), encrypted: true };
+      } catch {
+        return { ...p, password: '', encrypted: true, error: 'decrypt failed' };
+      }
+    }
+    return p;
+  });
 }
 
 let win = null;
@@ -147,7 +175,11 @@ ipcMain.on('win:min', () => win?.minimize());
 ipcMain.on('win:max', () => { if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
 ipcMain.on('win:close', () => win?.close());
 
-ipcMain.handle('state:get', () => loadState());
+ipcMain.handle('state:get', () => {
+  const s = loadState();
+  // 内存中解密密码供 UI 使用；磁盘上始终是密文
+  return { ...s, passwords: decryptPasswords(s), encryptionAvailable: safeStorage.isEncryptionAvailable() };
+});
 ipcMain.handle('state:set', (_e, patch) => saveState(patch));
 
 ipcMain.handle('bookmark:add', (_e, bm) => {
@@ -192,9 +224,13 @@ ipcMain.handle('chrome:import-passwords', async () => {
       const key = `${p.url}|${p.username}`;
       if (!known.has(key)) { (s.passwords ||= []).push(p); known.add(key); }
     }
-    saveState({ passwords: s.passwords });
+    saveState({ passwords: s.passwords }); // saveState 内部会加密
   }
-  return { count: result.passwords?.length ?? 0, note: result.note };
+  return {
+    count: result.passwords?.length ?? 0,
+    note: result.note,
+    encrypted: safeStorage.isEncryptionAvailable()
+  };
 });
 
 app.whenReady().then(() => {
