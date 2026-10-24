@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style 'unsafe-inline'">
+<title>Breeze</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #161a22; --panel2: #1c2230;
+    --text: #e8ebf0; --muted: #8b93a3; --accent: #7aa2f7;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font: 13px/1.4 system-ui, "Segoe UI", "PingFang SC", sans-serif; }
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  /* 标签栏（也是拖动区） */
+  #tabbar { display: flex; align-items: flex-end; height: 40px; padding: 6px 8px 0;
+    gap: 4px; -webkit-app-region: drag; background: var(--panel); user-select: none; }
+  .tab { display: flex; align-items: center; gap: 6px; max-width: 200px; min-width: 60px;
+    padding: 0 10px; height: 34px; border-radius: 8px 8px 0 0; color: var(--muted);
+    background: transparent; cursor: pointer; -webkit-app-region: no-drag; }
+  .tab.active { background: var(--panel2); color: var(--text); }
+  .tab .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tab .x { border: none; background: none; color: var(--muted); cursor: pointer;
+    border-radius: 4px; width: 18px; height: 18px; line-height: 1; }
+  .tab .x:hover { background: #333a4a; color: #fff; }
+  #newtab-btn { margin: 0 4px 6px; width: 26px; height: 26px; border: none; border-radius: 6px;
+    background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; -webkit-app-region: no-drag; }
+  #newtab-btn:hover { background: var(--panel2); color: var(--text); }
+  #winctl { margin-left: auto; display: flex; -webkit-app-region: no-drag; }
+  #winctl button { width: 40px; height: 30px; border: none; background: none; color: var(--muted);
+    cursor: pointer; font-size: 13px; }
+  #winctl button:hover { background: var(--panel2); color: var(--text); }
+  #winctl .close:hover { background: #e81123; color: #fff; }
+
+  /* 工具栏 */
+  #toolbar { display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 12px;
+    background: var(--panel2); }
+  #toolbar button.nav { width: 32px; height: 32px; border: none; border-radius: 50%;
+    background: none; color: var(--text); font-size: 15px; cursor: pointer; }
+  #toolbar button.nav:hover:not(:disabled) { background: #2a3245; }
+  #toolbar button.nav:disabled { color: #4a5265; cursor: default; }
+  #omnibox { flex: 1; height: 38px; border: none; outline: none; border-radius: 19px;
+    padding: 0 16px; background: #0c0f14; color: var(--text); font-size: 14px; }
+  #omnibox:focus { box-shadow: 0 0 0 2px var(--accent); }
+  .spacer { flex: 0 0 4px; }
+
+  /* 极简菜单 */
+  #menu { position: absolute; top: 92px; right: 10px; width: 240px; background: var(--panel2);
+    border-radius: var(--radius); box-shadow: 0 8px 30px rgba(0,0,0,.5); padding: 6px;
+    display: none; z-index: 10; }
+  #menu.open { display: block; }
+  #menu .item { padding: 9px 12px; border-radius: 6px; cursor: pointer; }
+  #menu .item:hover { background: #2a3245; }
+  #menu hr { border: none; border-top: 1px solid #2a3245; margin: 6px 4px; }
+  #wallpapers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 4px 12px 10px; }
+  .swatch { height: 36px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+  .swatch.sel { border-color: var(--accent); }
+  #toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel2); padding: 8px 16px; border-radius: 20px; display: none; z-index: 20; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="tabbar">
+    <div id="tabs" style="display:flex;flex:1;overflow:hidden"></div>
+    <button id="newtab-btn" title="新标签页">+</button>
+    <div id="winctl">
+      <button id="min" title="最小化">–</button>
+      <button id="max" title="最大化">▢</button>
+      <button id="cls" class="close" title="关闭">✕</button>
+    </div>
+  </div>
+  <div id="toolbar">
+    <button class="nav" id="back" title="后退">←</button>
+    <button class="nav" id="fwd" title="前进">→</button>
+    <button class="nav" id="reload" title="刷新">⟳</button>
+    <input id="omnibox" placeholder="搜索或输入网址" spellcheck="false">
+    <button class="nav" id="star" title="收藏">☆</button>
+    <button class="nav" id="menu-btn" title="菜单">⋮</button>
+  </div>
+  <div id="menu">
+    <div class="item" id="mi-import">从 Chrome 导入书签/历史…</div>
+    <div class="item" id="mi-bookmarks">书签管理</div>
+    <hr>
+    <div style="padding:4px 12px;color:var(--muted)">壁纸风格</div>
+    <div id="wallpapers"></div>
+    <div class="item" id="mi-custom-wall">自定义壁纸图片…</div>
+  </div>
+  <div id="toast"></div>
+</div>
+<script src="chrome.js"></script>
+</body>
+</html>
