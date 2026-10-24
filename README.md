@@ -9,6 +9,7 @@
 - 🤖 **Android 端**（Kotlin + WebView）：轻量原生壳
 - 📥 **Chrome 数据导入**：自动发现 Chrome profile，导入书签 + 历史
 - 🔑 **密码导入**：导入 Chrome **导出**的密码 CSV（见下方说明），带遮蔽/复制的管理面板
+- 🔒 **密码加密存储**：用 Electron `safeStorage`（Windows DPAPI / macOS Keychain / Linux libsecret）加密后落盘
 - 🎨 **壁纸风格**：8 种内置渐变 + 自定义图片，新标签页实时生效
 - ✂️ **极简 UI**：无边框窗口、隐藏系统菜单、只保留 地址栏 + 4 个按钮
 - 🔖 **书签管理**：收藏 / 导入 / 管理
@@ -57,7 +58,11 @@ Chrome → 设置 → 密码管理器 → 已保存的密码 → 三点菜单 �
 然后在 Breeze 菜单里选 **「导入 Chrome 密码 (CSV)…」**。密码默认以 `••••••••` 遮蔽，
 点击查看或复制。
 
-> 数据存在 `userData/breeze-state.json`（明文 JSON）。如用于真实账号，请自行加密后再存。
+**存储安全**：密码会用 Electron `safeStorage` 加密后写入 `userData/breeze-state.json`
+（Windows: DPAPI，macOS: Keychain，Linux: libsecret —— 均与系统登录凭据绑定）。
+
+若当前系统不支持加密（例如某些 Linux 桌面无 libsecret），会退化为**明文**存储，
+并在密码管理面板顶部显示黄色警告。此时请勿导入真实账号。
 
 ## Android 端
 
