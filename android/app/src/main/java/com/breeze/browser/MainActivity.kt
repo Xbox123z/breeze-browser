@@ -110,11 +110,13 @@ class MainActivity : AppCompatActivity() {
                 }
                 override fun onPageFinished(v: WebView, url: String) {
                     omni.setText(if (url == "about:blank") "" else url)
-                    progress.progress = 0
+                    this@MainActivity.progress.progress = 0
                 }
             }
             webChromeClient = object : WebChromeClient() {
-                override fun onProgressChanged(v: WebView, p: Int) { progress.progress = p }
+                override fun onProgressChanged(v: WebView, p: Int) {
+                    this@MainActivity.progress.progress = p
+                }
             }
         }
         root.addView(webView)
@@ -241,7 +243,8 @@ class MainActivity : AppCompatActivity() {
                 return
             }
         }
-        root.setBackgroundColor(WALLPAPERS[name] ?: WALLPAPERS["aurora"]!!)
+        val color = (WALLPAPERS[name] ?: WALLPAPERS["aurora"]!!).toInt()
+        root.setBackgroundColor(color)
     }
 
     /**
