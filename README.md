@@ -8,6 +8,7 @@
 - 🪟 **桌面端**（Electron + Chromium）：Windows / macOS 单一代码库
 - 🤖 **Android 端**（Kotlin + WebView）：轻量原生壳
 - 📥 **Chrome 数据导入**：自动发现 Chrome profile，导入书签 + 历史
+- 🔑 **密码导入**：导入 Chrome **导出**的密码 CSV（见下方说明），带遮蔽/复制的管理面板
 - 🎨 **壁纸风格**：8 种内置渐变 + 自定义图片，新标签页实时生效
 - ✂️ **极简 UI**：无边框窗口、隐藏系统菜单、只保留 地址栏 + 4 个按钮
 - 🔖 **书签管理**：收藏 / 导入 / 管理
@@ -44,6 +45,20 @@ npm run pack:mac     # 打包 macOS (DMG)
 
 > 历史导入需要可选依赖 `npm i -D better-sqlite3`（书签导入不需要）。
 
+### 密码导入说明
+
+Chrome 本地的 `Login Data` 里密码是加密的（Windows: DPAPI / App-Bound Encryption；macOS: Keychain），
+第三方应用**无法**可靠解密。所以 Breeze 支持的是 Chrome **导出**的 CSV：
+
+```
+Chrome → 设置 → 密码管理器 → 已保存的密码 → 三点菜单 → 导出密码
+```
+
+然后在 Breeze 菜单里选 **「导入 Chrome 密码 (CSV)…」**。密码默认以 `••••••••` 遮蔽，
+点击查看或复制。
+
+> 数据存在 `userData/breeze-state.json`（明文 JSON）。如用于真实账号，请自行加密后再存。
+
 ## Android 端
 
 用 Android Studio 打开 `android/` 目录，同步 Gradle 后直接运行。
@@ -52,6 +67,26 @@ npm run pack:mac     # 打包 macOS (DMG)
 - 接收系统“用浏览器打开”的链接
 - 书签 / 壁纸切换 / 数据清除
 - 从 Chrome 导出的 `bookmarks.html` 导入（放到 Downloads 目录）
+
+### Android 发布签名
+
+CI 构建的是 `assembleRelease`。若要产出**正式签名** APK，在仓库 Settings → Secrets 配置：
+
+| Secret | 说明 |
+|---|---|
+| `BREEZE_KEYSTORE_BASE64` | keystore 文件的 base64：`base64 -w0 breeze.keystore` |
+| `BREEZE_KEYSTORE_PASSWORD` | keystore 密码 |
+| `BREEZE_KEY_ALIAS` | key alias |
+| `BREEZE_KEY_PASSWORD` | key 密码 |
+
+未配置时自动退化为 debug 签名，**构建不会失败**。
+
+生成 keystore：
+
+```bash
+keytool -genkey -v -keystore breeze.keystore -alias breeze \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
 
 ## 设计原则
 
