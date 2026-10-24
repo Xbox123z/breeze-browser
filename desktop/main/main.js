@@ -161,7 +161,8 @@ ipcMain.handle('bookmark:remove', (_e, url) => {
 });
 
 /* ------------- Chrome 数据导入（书签/历史） ------------- */
-const { importChrome } = require('./chrome-import');
+const { importChrome, importPasswordsCsv } = require('./chrome-import');
+const { dialog } = require('electron');
 ipcMain.handle('chrome:import', async () => {
   const result = await importChrome();
   if (result.bookmarks?.length) {
@@ -171,6 +172,29 @@ ipcMain.handle('chrome:import', async () => {
     saveState({ bookmarks: s.bookmarks });
   }
   return { bookmarks: result.bookmarks?.length ?? 0, history: result.history?.length ?? 0, note: result.note };
+});
+
+/* ------------- 密码 CSV 导入 ------------- */
+// Chrome 的 "Login Data" 密码在本地是加密的（Win: DPAPI/App-Bound，mac: Keychain），
+// 第三方应用无法可靠解密，所以只支持 Chrome **导出**的 CSV。
+ipcMain.handle('chrome:import-passwords', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: '选择 Chrome 导出的密码 CSV',
+    filters: [{ name: 'CSV', extensions: ['csv'] }],
+    properties: ['openFile']
+  });
+  if (canceled || !filePaths?.length) return { passwords: [], note: 'cancelled' };
+  const result = await importPasswordsCsv(filePaths[0]);
+  if (result.passwords?.length) {
+    const s = loadState();
+    const known = new Set((s.passwords || []).map(p => `${p.url}|${p.username}`));
+    for (const p of result.passwords) {
+      const key = `${p.url}|${p.username}`;
+      if (!known.has(key)) { (s.passwords ||= []).push(p); known.add(key); }
+    }
+    saveState({ passwords: s.passwords });
+  }
+  return { count: result.passwords?.length ?? 0, note: result.note };
 });
 
 app.whenReady().then(() => {

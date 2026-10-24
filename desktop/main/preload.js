@@ -27,7 +27,8 @@ contextBridge.exposeInMainWorld('breeze', {
     remove: (url) => ipcRenderer.invoke('bookmark:remove', url)
   },
   chrome: {
-    import: () => ipcRenderer.invoke('chrome:import')
+    import: () => ipcRenderer.invoke('chrome:import'),
+    importPasswords: () => ipcRenderer.invoke('chrome:import-passwords')
   },
   on: (channel, cb) => {
     if (['tabs', 'nav', 'state'].includes(channel)) {

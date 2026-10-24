@@ -67,6 +67,15 @@ $('#mi-import').onclick = async () => {
   toast(`导入完成：书签 ${r.bookmarks} 条，历史 ${r.history} 条`);
 };
 
+$('#mi-import-passwords').onclick = async () => {
+  menu.classList.remove('open');
+  const r = await breeze.chrome.importPasswords();
+  state = await breeze.state.get();
+  toast(`导入 ${r.count} 条密码`);
+};
+
+$('#mi-passwords').onclick = () => { menu.classList.remove('open'); showPasswords(); };
+
 $('#mi-bookmarks').onclick = () => { menu.classList.remove('open'); showBookmarks(); };
 $('#mi-custom-wall').onclick = async () => {
   menu.classList.remove('open');
@@ -108,6 +117,36 @@ function showBookmarks() {
   });
 }
 function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+/* ---------- 密码管理（默认遮蔽，点击显示） ---------- */
+function showPasswords() {
+  const old = $('#pw-overlay'); if (old) old.remove();
+  const list = state.passwords || [];
+  const ov = document.createElement('div');
+  ov.id = 'pw-overlay';
+  ov.style.cssText = 'position:absolute;inset:96px 0 0;background:rgba(10,12,16,.96);z-index:30;overflow:auto;padding:24px';
+  const rows = list.map((p, i) =>
+    `<div style="padding:8px 12px;border-radius:8px;display:flex;gap:12px;align-items:center">
+       <span style="flex:0 0 180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.name || p.url)}</span>
+       <span style="flex:0 0 200px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.username)}</span>
+       <button data-i="${i}" style="flex:1;max-width:220px;background:#0c0f14;border:none;color:var(--text);padding:6px 10px;border-radius:6px;cursor:pointer;text-align:left">••••••••</button>
+       <button data-copy="${i}" style="background:none;border:none;color:var(--muted);cursor:pointer">复制</button>
+     </div>`).join('')
+    || `<div style="color:var(--muted)">还没有密码 — 从 Chrome 导出 CSV 后点菜单「导入 Chrome 密码 (CSV)」。<br><br>
+         Chrome → 设置 → 密码管理器 → 已保存的密码 → 三点菜单 → 导出密码</div>`;
+  ov.innerHTML = `<h2 style="margin-bottom:12px">密码 <button id="pw-close" style="float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button></h2>${rows}`;
+  document.body.appendChild(ov);
+  ov.querySelector('#pw-close').onclick = () => ov.remove();
+  ov.querySelectorAll('button[data-i]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i;
+    b.textContent = b.textContent === '••••••••' ? list[i].password : '••••••••';
+  });
+  ov.querySelectorAll('button[data-copy]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.copy;
+    navigator.clipboard?.writeText(list[i].password);
+    toast('已复制密码');
+  });
+}
 
 /* ---------- 壁纸 ---------- */
 const WALLPAPERS = [

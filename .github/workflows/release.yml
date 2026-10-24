@@ -43,13 +43,26 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build debug APK
+      # 若配置了签名 secrets 则产出正式签名 APK，否则自动退化为 debug 签名
+      - name: Decode keystore (if provided)
+        if: env.BREEZE_KEYSTORE_BASE64 != ''
+        env:
+          BREEZE_KEYSTORE_BASE64: ${{ secrets.BREEZE_KEYSTORE_BASE64 }}
+        run: |
+          echo "$BREEZE_KEYSTORE_BASE64" | base64 -d > /tmp/breeze.keystore
+          echo "BREEZE_KEYSTORE=/tmp/breeze.keystore" >> $GITHUB_ENV
+      - name: Build release APK
         working-directory: android
-        run: gradle assembleDebug
+        env:
+          BREEZE_KEYSTORE: ${{ env.BREEZE_KEYSTORE }}
+          BREEZE_KEYSTORE_PASSWORD: ${{ secrets.BREEZE_KEYSTORE_PASSWORD }}
+          BREEZE_KEY_ALIAS: ${{ secrets.BREEZE_KEY_ALIAS }}
+          BREEZE_KEY_PASSWORD: ${{ secrets.BREEZE_KEY_PASSWORD }}
+        run: gradle assembleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: breeze-android
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: ignore
 
   release:
