@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; style 'unsafe-inline'">
+<title>New Tab</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font: 14px/1.5 system-ui, "Segoe UI", "PingFang SC", sans-serif; color: #fff;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364); background-size: cover; }
+  body.light { color: #222; }
+  #clock { font-size: 64px; font-weight: 200; letter-spacing: 2px; text-shadow: 0 2px 12px rgba(0,0,0,.3); }
+  #date { color: rgba(255,255,255,.75); margin-bottom: 40px; }
+  body.light #date { color: rgba(0,0,0,.55); }
+  #search { width: min(560px, 80vw); height: 48px; border: none; outline: none; border-radius: 24px;
+    padding: 0 22px; font-size: 15px; background: rgba(255,255,255,.92); color: #222;
+    box-shadow: 0 4px 24px rgba(0,0,0,.25); }
+  #tiles { display: flex; gap: 14px; margin-top: 36px; flex-wrap: wrap; justify-content: center; max-width: 80vw; }
+  .tile { width: 88px; padding: 12px 6px; border-radius: 14px; background: rgba(255,255,255,.14);
+    backdrop-filter: blur(8px); text-align: center; cursor: pointer; color: #fff; text-decoration: none; }
+  .tile:hover { background: rgba(255,255,255,.26); }
+  .tile .icon { font-size: 22px; }
+  .tile .name { font-size: 11px; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="clock"></div>
+<div id="date"></div>
+<input id="search" placeholder="搜索或输入网址" autofocus>
+<div id="tiles"></div>
+<script>
+  // 新标签页在网页上下文中运行，无法直接用 preload 的 breeze 桥；
+  // 壁纸通过 localStorage 镜像（由 chrome.js 写入时同步）读取。
+  const WALLS = {
+    aurora: 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
+    dusk: 'linear-gradient(135deg,#41295a,#2F0743)',
+    forest: 'linear-gradient(135deg,#134e5e,#71b280)',
+    sand: 'linear-gradient(135deg,#3e5151,#decba4)',
+    mono: 'linear-gradient(135deg,#141e30,#243b55)',
+    rose: 'linear-gradient(135deg,#642b73,#c6426e)',
+    ocean: 'linear-gradient(135deg,#1a2980,#26d0ce)',
+    paper: 'linear-gradient(135deg,#ece9e6,#ffffff)'
+  };
+  try {
+    const mirror = JSON.parse(localStorage.getItem('breeze-state') || '{}');
+    if (mirror.wallpaper === 'custom' && mirror.customWallpaper) {
+      document.body.style.background = `center/cover no-repeat url(${mirror.customWallpaper})`;
+    } else if (WALLS[mirror.wallpaper]) {
+      document.body.style.background = WALLS[mirror.wallpaper];
+    }
+    if (mirror.wallpaper === 'paper') document.body.classList.add('light');
+  } catch {}
+
+  const clock = document.getElementById('clock');
+  const dateEl = document.getElementById('date');
+  function tick() {
+    const d = new Date();
+    clock.textContent = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    dateEl.textContent = d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+  }
+  tick(); setInterval(tick, 10000);
+
+  document.getElementById('search').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    let v = e.target.value.trim();
+    if (!v) return;
+    if (!/^[a-z]+:\/\//i.test(v)) {
+      v = /^[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/.test(v)
+        ? 'https://' + v
+        : 'https://www.google.com/search?q=' + encodeURIComponent(v);
+    }
+    location.href = v;
+  });
+
+  // 常用网站磁贴（静态默认，简洁优先）
+  const tiles = [
+    ['GitHub', '🐙', 'https://github.com'],
+    ['YouTube', '▶️', 'https://youtube.com'],
+    ['Bilibili', '📺', 'https://bilibili.com'],
+    ['Wikipedia', '📖', 'https://wikipedia.org'],
+    ['翻译', '🌐', 'https://translate.google.com'],
+    ['邮箱', '✉️', 'https://mail.google.com'],
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(([n, i, u]) =>
+    `<a class="tile" href="${u}"><div class="icon">${i}</div><div class="name">${n}</div></a>`).join('');
+</script>
+</body>
+</html>

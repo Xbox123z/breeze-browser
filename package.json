@@ -1,0 +1,25 @@
+{
+  "name": "breeze-browser",
+  "version": "0.1.0",
+  "description": "Breeze — a minimal Chromium-based browser for Windows/macOS/Android: Chrome data import, custom wallpapers, clutter-free UI.",
+  "main": "desktop/main/main.js",
+  "license": "MIT",
+  "author": "Xbox123z",
+  "scripts": {
+    "start": "electron .",
+    "pack:win": "electron-builder --win nsis",
+    "pack:mac": "electron-builder --mac dmg",
+    "pack": "electron-builder -mw"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.breeze.browser",
+    "productName": "Breeze",
+    "files": ["desktop/**/*"],
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg", "category": "public.app-category.productivity" }
+  }
+}
