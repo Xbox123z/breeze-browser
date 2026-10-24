@@ -30,8 +30,12 @@ contextBridge.exposeInMainWorld('breeze', {
     import: () => ipcRenderer.invoke('chrome:import'),
     importPasswords: () => ipcRenderer.invoke('chrome:import-passwords')
   },
+  wallpaper: {
+    // 让已打开的新标签页立即应用新壁纸
+    changed: () => ipcRenderer.send('wallpaper:changed')
+  },
   on: (channel, cb) => {
-    if (['tabs', 'nav', 'state'].includes(channel)) {
+    if (['tabs', 'nav', 'state', 'wallpaper:apply'].includes(channel)) {
       ipcRenderer.on(channel, (_e, data) => cb(data));
     }
   }

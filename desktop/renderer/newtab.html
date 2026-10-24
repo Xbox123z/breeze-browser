@@ -1,67 +1,326 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; style 'unsafe-inline'">
-<title>New Tab</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; style-src 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:;">
+<title>新标签页</title>
 <style>
-  * { margin: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
-  body { display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font: 14px/1.5 system-ui, "Segoe UI", "PingFang SC", sans-serif; color: #fff;
-    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364); background-size: cover; }
-  body.light { color: #222; }
-  #clock { font-size: 64px; font-weight: 200; letter-spacing: 2px; text-shadow: 0 2px 12px rgba(0,0,0,.3); }
-  #date { color: rgba(255,255,255,.75); margin-bottom: 40px; }
-  body.light #date { color: rgba(0,0,0,.55); }
-  #search { width: min(560px, 80vw); height: 48px; border: none; outline: none; border-radius: 24px;
-    padding: 0 22px; font-size: 15px; background: rgba(255,255,255,.92); color: #222;
-    box-shadow: 0 4px 24px rgba(0,0,0,.25); }
-  #tiles { display: flex; gap: 14px; margin-top: 36px; flex-wrap: wrap; justify-content: center; max-width: 80vw; }
-  .tile { width: 88px; padding: 12px 6px; border-radius: 14px; background: rgba(255,255,255,.14);
-    backdrop-filter: blur(8px); text-align: center; cursor: pointer; color: #fff; text-decoration: none; }
-  .tile:hover { background: rgba(255,255,255,.26); }
-  .tile .icon { font-size: 22px; }
-  .tile .name { font-size: 11px; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-hover: rgba(255, 255, 255, 0.22);
+    --text-main: #ffffff;
+    --text-sub: rgba(255, 255, 255, 0.75);
+    --search-bg: rgba(15, 20, 30, 0.65);
+    --search-focus: rgba(10, 14, 22, 0.88);
+    --accent: #6366f1;
+    --accent-glow: rgba(99, 102, 241, 0.4);
+    --radius-tile: 16px;
+    --radius-search: 28px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  
+  html, body {
+    height: 100%;
+    width: 100%;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    color: var(--text-main);
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: background 0.4s var(--ease);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 浅色主题壁纸适配 */
+  body.light {
+    --text-main: #1e293b;
+    --text-sub: rgba(30, 41, 59, 0.7);
+    --glass-bg: rgba(0, 0, 0, 0.05);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-hover: rgba(0, 0, 0, 0.09);
+    --search-bg: rgba(255, 255, 255, 0.85);
+    --search-focus: #ffffff;
+  }
+
+  /* 顶部氛围微光 */
+  .ambient-glow {
+    position: absolute;
+    top: -100px;
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .content-wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 860px;
+    padding: 0 24px;
+    animation: slideUp 0.4s var(--ease);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ================= 优雅时钟展示 ================= */
+  #clock {
+    font-size: 80px;
+    font-weight: 200;
+    letter-spacing: 3px;
+    line-height: 1;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    font-variant-numeric: tabular-nums;
+  }
+  body.light #clock {
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  #date {
+    font-size: 14.5px;
+    font-weight: 400;
+    color: var(--text-sub);
+    margin-top: 10px;
+    margin-bottom: 38px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  body.light #date {
+    text-shadow: none;
+  }
+
+  /* ================= 居中胶囊搜索框 ================= */
+  .search-box {
+    position: relative;
+    width: 100%;
+    max-width: 580px;
+    margin-bottom: 42px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-sub);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+  }
+
+  #search {
+    width: 100%;
+    height: 52px;
+    border: 1px solid var(--glass-border);
+    outline: none;
+    border-radius: var(--radius-search);
+    padding: 0 54px 0 52px;
+    font-size: 15px;
+    background: var(--search-bg);
+    backdrop-filter: blur(20px);
+    color: var(--text-main);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    transition: var(--ease) 0.25s;
+    user-select: text;
+  }
+
+  #search:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  body.light #search:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+  }
+
+  #search:focus {
+    background: var(--search-focus);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow), 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .search-enter {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-sub);
+    border: none;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+  }
+
+  /* ================= 磁贴快捷卡片 ================= */
+  #tiles {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 660px;
+  }
+
+  @media (max-width: 680px) {
+    #tiles { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 8px;
+    border-radius: var(--radius-tile);
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    text-decoration: none;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: transform 0.2s var(--ease), background 0.2s, box-shadow 0.2s;
+  }
+
+  .tile:hover {
+    background: var(--glass-hover);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+  }
+
+  .tile .icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  body.light .tile .icon-wrap {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .tile .name {
+    font-size: 12px;
+    font-weight: 500;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.9;
+  }
+
+  #err-msg {
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    font-size: 11px;
+    color: var(--text-sub);
+    opacity: 0.6;
+  }
 </style>
 </head>
 <body>
-<div id="clock"></div>
-<div id="date"></div>
-<input id="search" placeholder="搜索或输入网址" autofocus>
-<div id="tiles"></div>
+<div class="ambient-glow"></div>
+
+<div class="content-wrap">
+  <div id="clock">00:00</div>
+  <div id="date">加载中…</div>
+
+  <div class="search-box">
+    <div class="search-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </div>
+    <input id="search" placeholder="搜索或输入网址，回车直达…" spellcheck="false" autocomplete="off" autofocus>
+    <div class="search-enter">↵</div>
+  </div>
+
+  <div id="tiles"></div>
+</div>
+
+<div id="err-msg"></div>
+
 <script>
-  // 新标签页在网页上下文中运行，无法直接用 preload 的 breeze 桥；
-  // 壁纸通过 localStorage 镜像（由 chrome.js 写入时同步）读取。
   const WALLS = {
     aurora: 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
-    dusk: 'linear-gradient(135deg,#41295a,#2F0743)',
+    dusk:   'linear-gradient(135deg,#41295a,#2F0743)',
     forest: 'linear-gradient(135deg,#134e5e,#71b280)',
-    sand: 'linear-gradient(135deg,#3e5151,#decba4)',
-    mono: 'linear-gradient(135deg,#141e30,#243b55)',
-    rose: 'linear-gradient(135deg,#642b73,#c6426e)',
-    ocean: 'linear-gradient(135deg,#1a2980,#26d0ce)',
-    paper: 'linear-gradient(135deg,#ece9e6,#ffffff)'
+    sand:   'linear-gradient(135deg,#3e5151,#decba4)',
+    mono:   'linear-gradient(135deg,#141e30,#243b55)',
+    rose:   'linear-gradient(135deg,#642b73,#c6426e)',
+    ocean:  'linear-gradient(135deg,#1a2980,#26d0ce)',
+    paper:  'linear-gradient(135deg,#ece9e6,#ffffff)'
   };
-  try {
-    const mirror = JSON.parse(localStorage.getItem('breeze-state') || '{}');
-    if (mirror.wallpaper === 'custom' && mirror.customWallpaper) {
-      document.body.style.background = `center/cover no-repeat url(${mirror.customWallpaper})`;
-    } else if (WALLS[mirror.wallpaper]) {
-      document.body.style.background = WALLS[mirror.wallpaper];
-    }
-    if (mirror.wallpaper === 'paper') document.body.classList.add('light');
-  } catch {}
+  const LIGHT_THEMES = new Set(['paper', 'sand']);
 
+  function applyWallpaper(s) {
+    if (!s) return;
+    if (s.wallpaper === 'custom' && s.customWallpaper) {
+      document.body.style.background = `center/cover no-repeat url("${s.customWallpaper}")`;
+      document.body.classList.remove('light');
+      return;
+    }
+    const css = WALLS[s.wallpaper] || WALLS.aurora;
+    document.body.style.background = css;
+    document.body.classList.toggle('light', LIGHT_THEMES.has(s.wallpaper));
+  }
+
+  // 通过主桥 IPC 获得全局最新壁纸
+  (async () => {
+    if (window.breeze && typeof breeze.state?.get === 'function') {
+      try {
+        const s = await breeze.state.get();
+        applyWallpaper(s);
+      } catch (err) {
+        document.getElementById('err-msg').textContent = err.message;
+      }
+    } else {
+      try {
+        const m = JSON.parse(localStorage.getItem('breeze-state') || '{}');
+        if (m.wallpaper) applyWallpaper(m);
+      } catch {}
+    }
+  })();
+
+  // 接收实时壁纸广播
+  if (window.breeze && typeof breeze.on === 'function') {
+    breeze.on('wallpaper:apply', (s) => applyWallpaper(s));
+  }
+
+  // 动态时钟逻辑
   const clock = document.getElementById('clock');
   const dateEl = document.getElementById('date');
   function tick() {
-    const d = new Date();
-    clock.textContent = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    dateEl.textContent = d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+    const now = new Date();
+    clock.textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    dateEl.textContent = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
   }
-  tick(); setInterval(tick, 10000);
+  tick();
+  setInterval(tick, 1000);
 
+  // 搜索直达
   document.getElementById('search').addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     let v = e.target.value.trim();
@@ -74,17 +333,22 @@
     location.href = v;
   });
 
-  // 常用网站磁贴（静态默认，简洁优先）
-  const tiles = [
+  // 经典常用快捷磁贴
+  const TILES = [
     ['GitHub', '🐙', 'https://github.com'],
-    ['YouTube', '▶️', 'https://youtube.com'],
     ['Bilibili', '📺', 'https://bilibili.com'],
-    ['Wikipedia', '📖', 'https://wikipedia.org'],
-    ['翻译', '🌐', 'https://translate.google.com'],
-    ['邮箱', '✉️', 'https://mail.google.com'],
+    ['YouTube', '▶️', 'https://youtube.com'],
+    ['知乎', '💡', 'https://zhihu.com'],
+    ['V2EX', '💬', 'https://v2ex.com'],
+    ['Google', '🔍', 'https://google.com'],
   ];
-  document.getElementById('tiles').innerHTML = tiles.map(([n, i, u]) =>
-    `<a class="tile" href="${u}"><div class="icon">${i}</div><div class="name">${n}</div></a>`).join('');
+
+  document.getElementById('tiles').innerHTML = TILES.map(([name, icon, url]) => `
+    <a class="tile" href="${url}" title="${name}">
+      <div class="icon-wrap">${icon}</div>
+      <div class="name">${name}</div>
+    </a>
+  `).join('');
 </script>
 </body>
 </html>

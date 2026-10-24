@@ -63,7 +63,14 @@ function contentBounds() {
 
 function createTab(url = 'breeze://newtab') {
   const view = new WebContentsView({
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false }
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      // 标签页也注入 preload，让新标签页能通过 IPC 读取壁纸等状态
+      // （file:// 下 localStorage 不可靠，所以不走 localStorage）
+      preload: path.join(__dirname, 'preload.js')
+    }
   });
   view.webContents.setUserAgent(CHROME_UA);
   const id = nextId++;
@@ -174,6 +181,20 @@ ipcMain.on('nav:reload', () => { const t = tabs.find(t => t.id === activeId); t?
 ipcMain.on('win:min', () => win?.minimize());
 ipcMain.on('win:max', () => { if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
 ipcMain.on('win:close', () => win?.close());
+
+/* ------------- 壁纸变更广播 ------------- */
+// 用户切换壁纸后，让所有已打开的新标签页立即重绘
+ipcMain.on('wallpaper:changed', () => {
+  const s = loadState();
+  for (const t of tabs) {
+    if (t.url === 'breeze://newtab') {
+      t.view.webContents.send('wallpaper:apply', {
+        wallpaper: s.wallpaper,
+        customWallpaper: s.customWallpaper
+      });
+    }
+  }
+});
 
 ipcMain.handle('state:get', () => {
   const s = loadState();
